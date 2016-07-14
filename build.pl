@@ -36,7 +36,7 @@ sub getOpenSSL
 		executeShell("git clone -b $config->{gitBranch} $config->{gitRepository} $config->{workindCopyDir}");
 	}
 	chdir($config->{workindCopyDir});
-	executeShell("git pull origin OpenSSL_1_0_2-stable");
+	executeShell("git pull origin $config->{gitBranch}");
 	executeShell("git checkout");
 	chdir($config->{rootDir});
 }
