@@ -62,7 +62,7 @@ sub configureOpenSSL
 	$config->{rootDir} = $options->{workingDir};
 	$config->{workindCopyDir} = "$options->{workingDir}/openssl";
 	$config->{gitRepository} = 'https://github.com/openssl/openssl.git';
-	$config->{branchName} = 'OpenSSL_1_0_2-stable';
+	$config->{gitBranch} = 'OpenSSL_1_0_2-stable';
 	$config->{platform} = $options->{platform};
 	if ($options->{platform} eq 'win32')
 	{
