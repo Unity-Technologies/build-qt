@@ -28,7 +28,7 @@ sub getOptions
 	return $options;
 }
 
-sub getOpenSSL
+sub getSources
 {
 	my ($config) = @_;
 	unless (-f "$config->{workindCopyDir}/.git/HEAD" )
@@ -39,6 +39,11 @@ sub getOpenSSL
 	executeShell("git pull origin $config->{gitBranch}");
 	executeShell("git checkout");
 	chdir($config->{rootDir});
+}
+
+sub getOpenSSL
+{
+	return getSources(@_);
 }
 
 sub buildOpenSSL
@@ -55,15 +60,22 @@ sub buildOpenSSL
 	chdir($config->{rootDir});
 }
 
-sub configureOpenSSL
+sub basicConfiguration
 {
 	my ($options) = @_;
 	my $config = {};
+	$config->{platform} = $options->{platform};
 	$config->{rootDir} = $options->{workingDir};
+	return $config;
+}
+
+sub configureOpenSSL
+{
+	my ($options) = @_;
+	my $config = basicConfiguration($options);
 	$config->{workindCopyDir} = "$options->{workingDir}/openssl";
 	$config->{gitRepository} = 'https://github.com/openssl/openssl.git';
 	$config->{gitBranch} = 'OpenSSL_1_0_2-stable';
-	$config->{platform} = $options->{platform};
 	if ($options->{platform} eq 'win32')
 	{
 		$config->{vcArch} = 'x86';
@@ -82,20 +94,34 @@ sub configureOpenSSL
 
 sub configureQtBase
 {
+	my ($options) = @_;
+	my $config = basicConfiguration($options);
+	$config->{workindCopyDir} = "$options->{workingDir}/qt5";
+	$config->{gitRepository} = 'https://code.qt.io/qt/qt5.git';
+	$config->{gitBranch} = '5.3.2';
+	return $config;
 }
 
 sub getQtBase
 {
+	my ($config) = @_;
+	getSources($config);
+	chdir($config->{workindCopyDir});
+	executeShell('git submodule update --init qtbase');
+	executeShell('git submodule update --init qtimageformats');
+	executeShell('git submodule update --init qtwebkit');
+	chdir($config->{rootDir});
 }
 
 sub buildQtBase
 {
+	my ($options) = @_;
 }
 
 my $options = getOptions();
 my $opensslConfig = configureOpenSSL($options);
-getOpenSSL($opensslConfig);
-buildOpenSSL($opensslConfig);
-my $qtbaseConfig = configureOpenSSL($options);
+#getOpenSSL($opensslConfig);
+#buildOpenSSL($opensslConfig);
+my $qtbaseConfig = configureQtBase($options);
 getQtBase($qtbaseConfig);
-buildOpenSSL($qtbaseConfig);
+buildQtBase($qtbaseConfig);
