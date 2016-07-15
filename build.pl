@@ -17,14 +17,14 @@ sub executeShell
 
 sub getOptions
 {
-  my $options = {
-    workingDir => Cwd::getcwd()
-  };
+  my $options = {};
+  $options->{workingDir} = Cwd::getcwd();
   my $scheme = {
     platform => { required => 1, allow => ['win32', 'win64'] }
   };
   Getopt::Long::GetOptions('platform=s' => \$options->{platform});
   Params::Check::check($scheme, $options, 0) or die("Wrong arguments");
+  $options->{buildDir} = "$options->{workingDir}/build/$options->{platform}";
   return $options;
 }
 
@@ -64,8 +64,10 @@ sub basicConfiguration
 {
   my ($options) = @_;
   my $config = {};
+  $config->{os} = $^O;
   $config->{platform} = $options->{platform};
   $config->{rootDir} = $options->{workingDir};
+  $config->{buildDir} = $options->{buildDir};
   return $config;
 }
 
@@ -88,7 +90,7 @@ sub configureOpenSSL
     $config->{opensslArch} = 'VC-WIN64A';
     $config->{msStep} = '.\\ms\\do_win64a.bat';
   }
-  $config->{targetDir} = "$options->{workingDir}/build/$options->{platform}/openssl";
+  $config->{targetDir} = "$options->{buildDir}/openssl";
   return $config;
 }
 
@@ -109,7 +111,7 @@ sub configureQtBase
     $config->{vcArch} = 'amd64';
     $config->{qtArch} = 'win32-msvc2010';
   }
-  $config->{targetDir} = "$options->{workingDir}/build/$options->{platform}/qtbase";
+  $config->{targetDir} = "$options->{buildDir}/qtbase";
   $config->{opensslDir} = $options->{opensslDir};
   return $config;
 }
@@ -135,6 +137,12 @@ sub buildQtBase
   chdir($config->{rootDir});
 }
 
+sub packQtBase
+{
+  my ($config) = @_;
+  executeShell("$config->{rootDir}/tools/7-zip/$config->{os}/7z a $config->{buildDir}/builds $config->{targetDir}/*");
+}
+
 my $options = getOptions();
 
 my $opensslConfig = configureOpenSSL($options);
@@ -145,3 +153,4 @@ $options->{opensslDir} = $opensslConfig->{targetDir};
 my $qtbaseConfig = configureQtBase($options);
 getQtBase($qtbaseConfig);
 buildQtBase($qtbaseConfig);
+packQtBase($qtbaseConfig);
