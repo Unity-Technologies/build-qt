@@ -10,7 +10,7 @@ sub executeShell
 	my $code = system($commands);
 	if ($code != 0)
 	{
-		my $list = join('\n', @_);
+		my $list = join("\n", @_);
 		die("FAIL: Error $code. Failed to execute commands:\n$list\n");
 	}
 }
@@ -37,7 +37,7 @@ sub getSources
 	}
 	chdir($config->{workindCopyDir});
 	executeShell("git pull origin $config->{gitBranch}");
-	executeShell("git checkout");
+	executeShell("git checkout $config->{gitBranch}");
 	chdir($config->{rootDir});
 }
 
@@ -96,32 +96,52 @@ sub configureQtBase
 {
 	my ($options) = @_;
 	my $config = basicConfiguration($options);
-	$config->{workindCopyDir} = "$options->{workingDir}/qt5";
-	$config->{gitRepository} = 'https://code.qt.io/qt/qt5.git';
+	$config->{workindCopyDir} = "$options->{workingDir}/qtbase";
+	$config->{gitRepository} = 'https://code.qt.io/qt/qtbase.git';
 	$config->{gitBranch} = '5.3.2';
+	if ($options->{platform} eq 'win32')
+	{
+		$config->{vcArch} = 'x86';
+		$config->{qtArch} = 'win32-msvc2010';
+	}
+	elsif ($options->{platform} eq 'win64')
+	{
+		$config->{vcArch} = 'amd64';
+		$config->{qtArch} = 'win32-msvc2010';
+	}
+	$config->{targetDir} = "$options->{workingDir}/build/$options->{platform}/qtbase";
+	$config->{opensslDir} = $options->{opensslDir};
 	return $config;
 }
 
 sub getQtBase
 {
 	my ($config) = @_;
-	getSources($config);
-	chdir($config->{workindCopyDir});
-	executeShell('git submodule update --init qtbase');
-	executeShell('git submodule update --init qtimageformats');
-	executeShell('git submodule update --init qtwebkit');
-	chdir($config->{rootDir});
+	return getSources($config);
 }
 
 sub buildQtBase
 {
-	my ($options) = @_;
+	my ($config) = @_;
+	chdir($config->{workindCopyDir});
+	$ENV{_ROOT} = $config->{workindCopyDir};
+	$ENV{PATH} = "$ENV{_ROOT}\\qtbase\\bin;$ENV{_ROOT}\\gnuwin32\\bin;$ENV{PATH}";
+	$ENV{QMAKESPEC} = $config->{qtArch};
+	executeShell(
+			"\"C:/Program Files (x86)/Microsoft Visual Studio 10.0/VC/vcvarsall.bat\" $config->{vcArch}",
+			"configure -prefix $config->{targetDir} -opensource -confirm-license -no-opengl -no-icu -no-rtti -no-dbus -strip -nomake examples -nomake tests -openssl-linked OPENSSL_LIBS=\"-lssleay32 -llibeay32 -lgdi32 -luser32\" -I \"$config->{opensslDir}/include\" -L \"$config->{opensslDir}/lib\"",
+			"nmake install"
+			);
+	chdir($config->{rootDir});
 }
 
 my $options = getOptions();
+
 my $opensslConfig = configureOpenSSL($options);
-#getOpenSSL($opensslConfig);
-#buildOpenSSL($opensslConfig);
+getOpenSSL($opensslConfig);
+buildOpenSSL($opensslConfig);
+$options->{opensslDir} = $opensslConfig->{targetDir};
+
 my $qtbaseConfig = configureQtBase($options);
 getQtBase($qtbaseConfig);
 buildQtBase($qtbaseConfig);
